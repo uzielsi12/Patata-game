@@ -20,6 +20,18 @@ export default class MenuScene extends Phaser.Scene {
         this.settingsButton = this.add.rectangle(centerX + 200, centerY, 120, 50, 0xadd8e6).setInteractive();
         this.add.text(centerX + 200, centerY, 'AJUSTES', { fontSize: '20px', color: '#222' }).setOrigin(0.5);
 
+        // Marcadores de puntuación máxima
+        const maxBosses = parseInt(localStorage.getItem('maxBosses')) || 0;
+        const maxEnemies = parseInt(localStorage.getItem('maxEnemies')) || 0;
+        
+        // Fondo para los marcadores
+        this.add.rectangle(centerX, centerY + 120, 400, 80, 0x222222, 0.7);
+        
+        // Texto de marcadores
+        this.add.text(centerX, centerY + 100, 'RÉCORDS', { fontSize: '18px', color: '#ffd700' }).setOrigin(0.5);
+        this.add.text(centerX - 100, centerY + 120, `Bosses: ${maxBosses}`, { fontSize: '16px', color: '#fff' }).setOrigin(0.5);
+        this.add.text(centerX + 100, centerY + 120, `Enemigos: ${maxEnemies}`, { fontSize: '16px', color: '#fff' }).setOrigin(0.5);
+
         // Patata decorativa (círculo marrón)
         this.add.ellipse(centerX, centerY - 120, 80, 110, 0xc2b280);
         this.add.text(centerX, centerY - 120, '🥔', { fontSize: '40px' }).setOrigin(0.5);

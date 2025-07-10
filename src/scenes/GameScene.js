@@ -31,9 +31,70 @@ export default class GameScene extends Phaser.Scene {
         this.bossProjectiles = this.physics.add.group();
         // Vida de la patata
         this.playerLives = 3;
+        
+        // Variables de score
+        this.bossesDefeated = parseInt(localStorage.getItem('bossesDefeated')) || 0;
+        this.enemiesDefeated = parseInt(localStorage.getItem('enemiesDefeated')) || 0;
+        
+        // Variables de control del jugador
+        this.playerCanMove = true;
+        this.playerCanAttack = true;
+        this.playerInvulnerable = false;
 
         // Fondo
         this.cameras.main.setBackgroundColor('#87ceeb');
+
+        // Cielo detallado con gradiente
+        const skyGradient = this.add.graphics();
+        skyGradient.fillGradientStyle(0x87ceeb, 0x87ceeb, 0x4682b4, 0x4682b4, 1);
+        skyGradient.fillRect(0, 0, 800, 600);
+        
+        // Montañas en el fondo con efecto de perspectiva
+        const mountains = this.add.graphics();
+        // Montañas lejanas (más oscuras y pequeñas)
+        mountains.fillStyle(0x2f4f4f, 0.8);
+        for (let i = 0; i < 8; i++) {
+            const x = i * 120 - 60;
+            const height = 80 + Math.random() * 40;
+            mountains.fillTriangle(x, 600, x + 60, 600 - height, x + 120, 600);
+        }
+        // Montañas medias (tono medio)
+        mountains.fillStyle(0x556b2f, 0.9);
+        for (let i = 0; i < 6; i++) {
+            const x = i * 140 - 40;
+            const height = 100 + Math.random() * 50;
+            mountains.fillTriangle(x, 600, x + 70, 600 - height, x + 140, 600);
+        }
+        // Montañas cercanas (más claras y grandes)
+        mountains.fillStyle(0x6b8e23, 1);
+        for (let i = 0; i < 4; i++) {
+            const x = i * 200 - 50;
+            const height = 120 + Math.random() * 60;
+            mountains.fillTriangle(x, 600, x + 100, 600 - height, x + 200, 600);
+        }
+
+        // Marcador de nivel en esquina superior izquierda
+        this.levelText = this.add.text(20, 20, `Nivel ${this.level}`, { 
+            fontSize: '24px', 
+            color: '#fff', 
+            backgroundColor: '#333',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0, 0).setDepth(10);
+        
+        // Marcadores de score
+        this.bossScoreText = this.add.text(20, 60, `Bosses: ${this.bossesDefeated}`, { 
+            fontSize: '18px', 
+            color: '#fff', 
+            backgroundColor: '#333',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setDepth(10);
+        
+        this.enemyScoreText = this.add.text(20, 90, `Enemigos: ${this.enemiesDefeated}`, { 
+            fontSize: '18px', 
+            color: '#fff', 
+            backgroundColor: '#333',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setDepth(10);
 
         // Botón de salir
         this.exitButton = this.add.rectangle(760, 40, 60, 40, 0xff4444).setInteractive();
@@ -42,9 +103,35 @@ export default class GameScene extends Phaser.Scene {
             this.scene.start('MenuScene');
         });
 
-        // Plataforma suelo
+        // Plataforma suelo con textura
         this.ground = this.add.rectangle(400, 580, 800, 40, 0x654321);
         this.physics.add.existing(this.ground, true);
+        
+        // Textura del suelo
+        const groundTexture = this.add.graphics();
+        groundTexture.fillStyle(0x8b4513);
+        // Patrón de tierra irregular
+        for (let x = 0; x < 800; x += 20) {
+            for (let y = 560; y < 600; y += 10) {
+                if (Math.random() > 0.7) {
+                    groundTexture.fillRect(x + Math.random() * 10, y, 8 + Math.random() * 12, 6 + Math.random() * 8);
+                }
+            }
+        }
+        // Manchas de tierra más oscura
+        groundTexture.fillStyle(0x654321);
+        for (let i = 0; i < 15; i++) {
+            const x = Math.random() * 800;
+            const y = 560 + Math.random() * 40;
+            groundTexture.fillEllipse(x, y, 20 + Math.random() * 30, 10 + Math.random() * 20);
+        }
+        // Manchas de tierra más clara
+        groundTexture.fillStyle(0xa0522d);
+        for (let i = 0; i < 10; i++) {
+            const x = Math.random() * 800;
+            const y = 560 + Math.random() * 40;
+            groundTexture.fillEllipse(x, y, 15 + Math.random() * 25, 8 + Math.random() * 15);
+        }
 
         // Jugador (patata)
         const potatoStyleIndex = parseInt(localStorage.getItem('potatoStyle')) || 0;
@@ -57,14 +144,13 @@ export default class GameScene extends Phaser.Scene {
             { color: 0xc2b280, shape: 'mini' },
         ];
         const potatoStyle = potatoStyles[potatoStyleIndex] || potatoStyles[0];
-        if (potatoStyle.shape === 'ellipse') {
-            this.player = this.add.ellipse(120, 500, 50, 70, potatoStyle.color);
-        } else if (potatoStyle.shape === 'circle') {
-            this.player = this.add.ellipse(120, 500, 60, 60, potatoStyle.color);
-        } else if (potatoStyle.shape === 'rect') {
-            this.player = this.add.rectangle(120, 500, 40, 80, potatoStyle.color);
-        } else if (potatoStyle.shape === 'mini') {
+        // Siempre usar tamaño mini pero respetar color y forma
+        if (potatoStyle.shape === 'ellipse' || potatoStyle.shape === 'mini') {
             this.player = this.add.ellipse(120, 500, 25, 35, potatoStyle.color);
+        } else if (potatoStyle.shape === 'circle') {
+            this.player = this.add.ellipse(120, 500, 25, 35, potatoStyle.color);
+        } else if (potatoStyle.shape === 'rect') {
+            this.player = this.add.rectangle(120, 500, 25, 35, potatoStyle.color);
         }
         this.physics.add.existing(this.player);
         this.player.body.setCollideWorldBounds(true);
@@ -305,6 +391,12 @@ export default class GameScene extends Phaser.Scene {
                     mole.body.setVelocityX(0);
                 }
             }
+            
+            // Límites para evitar que salgan del mapa
+            if (mole.x < 50) mole.x = 50;
+            if (mole.x > 750) mole.x = 750;
+            if (mole.y < 100) mole.y = 100;
+            if (mole.y > 540) mole.y = 540;
         });
         // Topos del cielo caen y luego persiguen
         this.skyMoles.getChildren().forEach(mole => {
@@ -347,6 +439,12 @@ export default class GameScene extends Phaser.Scene {
                     mole.body.setVelocityX(0);
                 }
             }
+            
+            // Límites para evitar que salgan del mapa
+            if (mole.x < 50) mole.x = 50;
+            if (mole.x > 750) mole.x = 750;
+            if (mole.y < 100) mole.y = 100;
+            if (mole.y > 540) mole.y = 540;
         });
 
         // Si se eliminaron todos los topos y no hay jefe ni jetpack, aparece el jefe
@@ -465,6 +563,14 @@ export default class GameScene extends Phaser.Scene {
                 }
                 this.time.delayedCall(0, () => mole.destroy());
                 this.molesDefeated++;
+                this.enemiesDefeated++;
+                this.enemyScoreText.setText(`Enemigos: ${this.enemiesDefeated}`);
+                // Guardar récord
+                const maxEnemies = parseInt(localStorage.getItem('maxEnemies')) || 0;
+                if (this.enemiesDefeated > maxEnemies) {
+                    localStorage.setItem('maxEnemies', this.enemiesDefeated.toString());
+                }
+                localStorage.setItem('enemiesDefeated', this.enemiesDefeated.toString());
             } else {
                 mole.setData('life', life);
                 mole.setFillStyle(0xff8888);
@@ -536,6 +642,14 @@ export default class GameScene extends Phaser.Scene {
                 });
                 this.bossActive = false;
                 this.bossDefeated = true;
+                this.bossesDefeated++;
+                this.bossScoreText.setText(`Bosses: ${this.bossesDefeated}`);
+                // Guardar récord
+                const maxBosses = parseInt(localStorage.getItem('maxBosses')) || 0;
+                if (this.bossesDefeated > maxBosses) {
+                    localStorage.setItem('maxBosses', this.bossesDefeated.toString());
+                }
+                localStorage.setItem('bossesDefeated', this.bossesDefeated.toString());
                 if (this.bossAwakenTimer) this.bossAwakenTimer.remove();
             }
         }
@@ -651,7 +765,7 @@ export default class GameScene extends Phaser.Scene {
             this.player.setFillStyle(0xfff222);
             // Inmunidad y bloqueo de controles
             this.playerInvulnerable = true;
-            this.playerCanMove = false;
+            this.playerCanMove = true; // Forzar movimiento permitido
             this.playerCanAttack = false;
             // Guardar velocidad previa
             if (this.player.body) this.player.body.setVelocity(0, 0);
@@ -742,6 +856,9 @@ export default class GameScene extends Phaser.Scene {
         if (this.exitButton) { this.exitButton.destroy(); this.exitButton = null; }
         if (this.player) { this.player.destroy(); this.player = null; }
         if (this.ground) { this.ground.destroy(); this.ground = null; }
+        if (this.levelText) { this.levelText.destroy(); this.levelText = null; }
+        if (this.bossScoreText) { this.bossScoreText.destroy(); this.bossScoreText = null; }
+        if (this.enemyScoreText) { this.enemyScoreText.destroy(); this.enemyScoreText = null; }
         if (this.bossAttackTimer) { this.bossAttackTimer.remove(); this.bossAttackTimer = null; }
         if (this.swordAttackTimer) { this.swordAttackTimer.remove(); this.swordAttackTimer = null; }
         this.input && this.input.removeAllListeners && this.input.removeAllListeners();
